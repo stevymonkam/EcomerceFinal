@@ -10,7 +10,7 @@
       </ul>
       <div class="row" style="margin-right: 7px; margin-left: 7px; padding-top: 20px; padding-bottom: 20px;">
          <div class="col-md-12 mt-2">
-            <button class="btn btn-primary btn-lg btn-block" (click)="createProduct()"  style="background-color: #9dc4e7;"> Nuova </button>
+            <button class="btn btn-primary btn-lg btn-block" (click)="createProduct()" data-toggle="modal" data-target="#exampleModal" style="background-color: #9dc4e7;"> Create New Product </button>
          </div>
          <br>
          <div class="col-md-12 mt-2">
@@ -39,7 +39,7 @@
       </div>
    </div>
    <div class="col-md-8">
-      <div *ngFor="let p of products"  data-toggle="modal" data-target="#exampleModal">
+      <div *ngFor="let p of products" (click)="openModal(p)" data-toggle="modal" data-target="#exampleModal">
          <div class="col-md-6">
             <div class="panel panel-default">
                <div class="panel-heading" (being)="getImageFromService(p.id)">{{p.name}} {{p.id}}</div>
@@ -86,9 +86,7 @@
       </div>
    </div>
 
-<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
-   Launch demo modal
- </button>
+
  
  <!-- Modal -->
  <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -96,7 +94,7 @@
      <div class="modal-content">
        <div class="modal-header">
          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
-         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+         <button type="button" class="close" (click)="dismiss()" data-dismiss="modal" aria-label="Close">
            <span aria-hidden="true">&times;</span>
          </button>
        </div>
@@ -119,6 +117,8 @@
                         <table>
                            <tr>
                               <td rowspan="3" > 
+                                 <img [src]="imageToShow"  height="150" width="200" >
+
                                  <br>
                                 <br>
                                 <p>
@@ -126,8 +126,10 @@
                                        <span class="glyphicon glyphicon-edit"></span>
                                     </button>
                                  </p>
-                                 <p  class="reduirep">
-                                    <input type="file" (change)="onSelectedFile($event)">
+                                 <p  class="reduirep" >
+                                    <input type="file" *ngIf="flagCreateProduct" [disabled]="flag_control_file" (change)="onSelectedFile($event)">
+                                    <input type="file" *ngIf="flagEditProduct"  (change)="onSelectedFile($event)">
+
                                  </p>
                                  
                                  <p>
@@ -170,8 +172,10 @@
                   </div>
          </form>
          <div class="modal-footer">
-         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-         <button type="button" class="btn btn-primary" (click)="saveProduct()">Save changes</button>
+         <button type="button" class="btn btn-secondary" (click)="dismiss()" data-dismiss="modal" >Close</button>
+         <button type="button" class="btn btn-primary" (click)="saveProduct()" *ngIf="flagCreateProduct" [disabled]="flag_gestione_create">Save changes</button>
+         <button type="button" class="btn btn-primary" (click)="UpdateProduct()" *ngIf="flagEditProduct">Save changes</button>
+
        </div>
      </div>
    </div>

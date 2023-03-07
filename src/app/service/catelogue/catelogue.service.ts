@@ -66,6 +66,20 @@ export class CatelogueService {
     return res;
   }
 
+  update(data: any): Promise < any > {
+   
+   
+  
+    
+    console.log(data);
+
+    console.log("data before sending fin stevy monkam" + JSON.stringify(data));
+
+    const url = `${this.api_url}/auth/product/update/${data.id}`;
+    const res =  this.httpClient.put(url, data).toPromise();
+    return res;
+  }
+
 
   
 }

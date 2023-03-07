@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CatelogueService } from './service/catelogue/catelogue.service';
 
 
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
