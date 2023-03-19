@@ -18,5 +18,15 @@ export class HeaderComponent implements OnInit {
     this.currentCategorie=undefined;
     this.router.navigateByUrl("/products/1/0");
   }
+  onProductsPromo(){
+    this.currentCategorie=undefined;
+    this.router.navigateByUrl("/products/3/0");
+
+  }
+  onProductsDispo(){
+    this.currentCategorie=undefined;
+    this.router.navigateByUrl("/products/4/0");
+
+  }
 
 }

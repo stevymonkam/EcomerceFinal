@@ -16,7 +16,7 @@ export class AuthService {
 
 
  userId: any;
-
+ roles:any;
 
 
    api_url: string;
@@ -56,6 +56,18 @@ export class AuthService {
 
     getAccessToken() {
       return localStorage.getItem('token');
+    }
+
+    isAdmin(){
+      const id = localStorage.getItem("idUser");
+      this.roles = localStorage.getItem("roles");
+
+      if(id!=null && id!=""){
+        if(this.roles.indexOf('ADMIN')>-1){
+           return true;
+        }
+      }
+      return false;
     }
 
 
