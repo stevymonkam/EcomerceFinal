@@ -37,7 +37,7 @@ export class LoginComponent implements OnInit {
   ngOnInit(): void {
 
   }
-
+  
    async login() {
      
 
@@ -50,6 +50,10 @@ export class LoginComponent implements OnInit {
       this.router.navigate(['products']);
       localStorage.setItem("token", res.accessToken);
       localStorage.setItem("idUser", res.id);
+      localStorage.setItem("roles", res.roles);
+
+
+
       //localStorage.setItem("idRole", res.role[0].id);
       console.log('ecco id role');
       console.log(localStorage.getItem('idRole'));

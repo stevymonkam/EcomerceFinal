@@ -9,7 +9,7 @@
          </li>
       </ul>
       <div class="row" style="margin-right: 7px; margin-left: 7px; padding-top: 20px; padding-bottom: 20px;">
-         <div class="col-md-12 mt-2">
+         <div class="col-md-12 mt-2" *ngIf="authService.isAdmin()">
             <button class="btn btn-primary btn-lg btn-block" (click)="createProduct()" data-toggle="modal" data-target="#exampleModal" style="background-color: #9dc4e7;"> Create New Product </button>
          </div>
          <br>
@@ -46,10 +46,11 @@
                <div class="panel-body">
                   <table>
                      <tr>
-                        <td rowspan="3">
+                        <td rowspan="2">
                            <img [src]="imgArray[p.id].src"  height="150" width="200">
                            <br>
                            <br>
+                        <div *ngIf="authService.isAdmin()">
                            <p>
                               <button (click)="onEditPhoto(p)">
                               <span class="glyphicon glyphicon-edit"></span>
@@ -67,6 +68,7 @@
                               <option *ngFor="let tipo of category" [value]="tipo.id">{{tipo.name}}</option>
                               </select>
                            </p>
+                        </div>
                         </td>
                      </tr>
                      <tr>
@@ -89,7 +91,7 @@
 
  
  <!-- Modal -->
- <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+ <div class="modal fade" id="exampleModal" tabindex="-1"  role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true" *ngIf="authService.isAdmin()">
    <div class="modal-dialog" role="document">
      <div class="modal-content">
        <div class="modal-header">
@@ -172,11 +174,19 @@
                   </div>
          </form>
          <div class="modal-footer">
-         <button type="button" class="btn btn-secondary" (click)="dismiss()" data-dismiss="modal" >Close</button>
-         <button type="button" class="btn btn-primary" (click)="saveProduct()" *ngIf="flagCreateProduct" [disabled]="flag_gestione_create">Save changes</button>
-         <button type="button" class="btn btn-primary" (click)="UpdateProduct()" *ngIf="flagEditProduct">Save changes</button>
+            <div class="row">
+               <div class="col-md-3">
+                  <button   (click)="deproduct()" id="closeModal" class="btn btn-primary btn-lg btn-block" style="background-color: #9dc4e7;"> Elimina </button>
 
-       </div>
+               </div>
+               <div class="col-md-9">
+                  <button type="button" class="btn btn-secondary" (click)="dismiss()" data-dismiss="modal" >Close</button>
+                  <button type="button" class="btn btn-primary" (click)="saveProduct()" *ngIf="flagCreateProduct" [disabled]="flag_gestione_create">Save changes</button>
+                  <button type="button" class="btn btn-primary" (click)="UpdateProduct()" *ngIf="flagEditProduct">Save changes</button>
+               </div>
+
+            </div>
+        </div>
      </div>
    </div>
  </div>

@@ -12,6 +12,9 @@ import { ToastrService } from 'ngx-toastr';
 import { CommonModule } from '@angular/common';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { DetaglioProduct } from 'src/app/models/detaglioProduct';
+import { AuthService } from 'src/app/service/auth/auth.service';
+declare var require: any;
+const swal = require("sweetalert2");
 
 
 
@@ -21,7 +24,7 @@ import { DetaglioProduct } from 'src/app/models/detaglioProduct';
   styleUrls: ['./products.component.css']
 })
 export class ProductsComponent implements OnInit {
-
+  @ViewChild('closebutton') closebutton : any;
   products: any;
   dataSource: any;
   @Input() myData: string[] | undefined;
@@ -55,14 +58,18 @@ export class ProductsComponent implements OnInit {
   fa: FormGroup;
   submitted: boolean = false;
   flagCreateNewp: boolean = false;
+  title: string;
+  currentRequest: string;
 
  
  // flag_product: boolean = true;
 
 
-  constructor(public catService: CatelogueService,   private toastrService: ToastrService, private route: ActivatedRoute, private router: Router,private modalService: NgbModal, private validationService: FormValidationService) {
+  constructor(public catService: CatelogueService,public authService: AuthService,  private toastrService: ToastrService, private route: ActivatedRoute, private router: Router,private modalService: NgbModal, private validationService: FormValidationService) {
     this.fa = this.validationService.detaglioProductForm(null, '');
     this.productModal = null;
+    this.title = '';
+    this.currentRequest = '';
   }
 
   ngOnInit(): void {
@@ -80,16 +87,29 @@ export class ProductsComponent implements OnInit {
             let p1 = this.route.snapshot.params['p1'];
 
             if (p1 == 1) {
+              this.title="Sélection";
                 this.currentCategorie = undefined;
                 this.getProducts();
-
-            } else if (p1 == 2) {
-
+1
+             } else if (p1 == 2) {
+1
                 let idcat = this.route.snapshot.params['p2'];
-
+                this.title="Produits de la catégorie "+idcat;
                 console.log(idcat);
                 this.getCategorieById(idcat - 1);
 
+            } else if (p1==3){
+              this.title="Produits en promotion";
+               this.currentRequest='products/search/promoProducts';
+               this.getProductsBySearch(this.currentRequest);
+            } else if (p1==4){
+              this.title="Produits Disponible";
+               this.currentRequest='products/search/dispoProducts';
+               this.getProductsBySearch(this.currentRequest);
+            }else if (p1==5){
+              //this.title="Produits Disponible";
+               //this.currentRequest='/products/search/dispoProducts';
+               //this.getProductsBySearch(this.currentRequest);
             }
 
         }
@@ -136,6 +156,63 @@ getCategorieById(id: any) {
     }).catch((error) => {
         console.log("il ya erreur by idddddd");
     });
+}
+
+getProductsBySearch(url:any){
+  this.catService.getProductsBySearch(url).then((data) => {
+    console.log("list cat sucess by id laaaaaaa nouveellllll listeettttt");
+    console.log(data);
+}).catch((error) => {
+    console.log("il ya erreur by idddddd laaaaaaa nouveellllll nouveauu 2222222222");
+});
+
+}
+/*private getProductsBySearch(url:any) {
+  this.catService.getProductsBySearch(url)
+    .subscribe(data=>{
+      this.products=data;
+    },err=>{
+      console.log(err);
+    })
+}*/
+async deproduct() {
+ // console.log(JSON.stringify(this.selection.selected));
+  await swal.mixin({
+    buttonsStyling: true,
+  }).fire({
+    title: "",
+    text: "Sei sicuro di voler eliminare questa registrazione?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Elimina",
+    cancelButtonText: "Annulla",
+    showLoaderOnConfirm: true,
+    reverseButtons: true,
+    preConfirm: (login:any) => {
+      return this.catService.deletProduct(this.currentProduct).then((response) => {
+        if (!response.ok) {
+          throw new Error(response.statusText);
+        }
+        return response.json();
+      }).catch((error) => {
+        /* this.toastr.error(error, 'Elimina Contratti',{
+          timeOut: 3000,
+        }); */
+      });
+    },
+    allowOutsideClick: () => !swal.isLoading(),
+  }).then((result:any) => {
+    if (result.value) {
+      console.log("*******" + JSON.stringify(result));
+      this.toastrService.info(result.message, 'Elimina Contratti');
+      //this.modalService.close();
+      this.closebutton.nativeElement.click();
+
+      console.log(JSON.stringify(result));
+    } else {
+      console.log("cancellation===" + JSON.stringify(result));
+    }
+  });
 }
 getProducts() {
     this.catService.getProducts().then((data) => {
