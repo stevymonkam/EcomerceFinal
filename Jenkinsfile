@@ -4,11 +4,6 @@ def CONTAINER_TAG = getTag(env.BUILD_NUMBER, env.BRANCH_NAME)
 def HTTP_PORT = getHTTPPort(env.BRANCH_NAME)
 def EMAIL_RECIPIENTS = "votre-email@example.com"
 
-// Configuration GitOps pour ArgoCD
-def GITOPS_REPO = "https://github.com/votre-org/angular-app-gitops.git"
-def GITOPS_BRANCH = "main"
-def GITOPS_CREDENTIALS = "gitops-repo-credentials"
-
 node {
     try {
         stage('Initialize') {
@@ -22,8 +17,8 @@ node {
         }
 
         // ÉTAPE 1: BUILD ANGULAR
-        stage('Angular Build') {
-            sh 'npm ci'  // Installation des dépendances
+       /* stage('Angular Build') {
+            sh 'npm ci'  // Installation des dépendances (plus rapide que npm install)
             
             // Build selon l'environnement
             if (ENV_NAME == 'prod') {
@@ -37,14 +32,28 @@ node {
             // Vérifier que le build a créé les fichiers
             sh 'ls -la dist/'
             
-            // Tests unitaires optionnels
+            // Optionnel: Tests unitaires
             // sh 'npm run test:ci'
-        }
+        }*/
 
         // ÉTAPE 2: CONTAINERISATION
-        stage('Image Build') {
-            imageBuild(CONTAINER_NAME, CONTAINER_TAG)
+         stage('Image Build') {
+            // Ajoute cette ligne AVANT le build
+           imageBuild(CONTAINER_NAME, CONTAINER_TAG)
         }
+       /* stage('Docker Build & Push') {
+            // Build de l'image Docker
+            sh "docker build -t $CONTAINER_NAME:$CONTAINER_TAG -t $CONTAINER_NAME --pull --no-cache ."
+            echo "Docker image built: $CONTAINER_NAME:$CONTAINER_TAG"
+            
+            // Push vers Docker Registry
+            withCredentials([usernamePassword(credentialsId: 'dockerhubcredential', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                sh "docker login -u $USERNAME -p $PASSWORD"
+                sh "docker tag $CONTAINER_NAME:$CONTAINER_TAG $USERNAME/$CONTAINER_NAME:$CONTAINER_TAG"
+                sh "docker push $USERNAME/$CONTAINER_NAME:$CONTAINER_TAG"
+                echo "Image pushed to registry"
+            }
+        }*/
 
         stage('Push to Docker Registry') {
             withCredentials([usernamePassword(credentialsId: 'dockerhubcredential', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
@@ -52,31 +61,24 @@ node {
             }
         }
 
-        // ÉTAPE 3: MISE À JOUR GITOPS POUR ARGOCD
-        stage('Update GitOps Repository') {
-            withCredentials([usernamePassword(credentialsId: GITOPS_CREDENTIALS, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
-                updateGitOpsManifests(CONTAINER_NAME, CONTAINER_TAG, ENV_NAME, GIT_USERNAME, GIT_PASSWORD)
+       
+        // ÉTAPE 3: DÉPLOIEMENT
+        stage('Deploy Application') {
+            withCredentials([usernamePassword(credentialsId: 'dockerhubcredential', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                // Arrêter le conteneur existant s'il existe
+                sh "docker stop $CONTAINER_NAME || true"
+                sh "docker rm $CONTAINER_NAME || true"
+                
+                // Déployer la nouvelle version
+                sh "docker pull $USERNAME/$CONTAINER_NAME:$CONTAINER_TAG"
+                sh "docker run -d -p $HTTP_PORT:80 --name $CONTAINER_NAME $USERNAME/$CONTAINER_NAME:$CONTAINER_TAG"
+                
+                echo "Application deployed successfully on port: $HTTP_PORT"
+                echo "Access URL: http://localhost:$HTTP_PORT"
             }
         }
 
-        // ÉTAPE 4: SYNCHRONISATION ARGOCD (OPTIONNEL)
-        stage('Trigger ArgoCD Sync') {
-            // Option 1: Attendre la synchronisation automatique d'ArgoCD
-            echo "ArgoCD détectera automatiquement les changements dans le repository GitOps"
-            echo "Application sera déployée automatiquement dans l'environnement: ${ENV_NAME}"
-            
-            // Option 2: Déclencher manuellement la synchronisation (si CLI ArgoCD disponible)
-            triggerArgoCDSync(ENV_NAME)
-        }
 
-        // ÉTAPE 5: VÉRIFICATION DU DÉPLOIEMENT
-        stage('Verify Deployment') {
-            // Attendre quelques secondes pour la synchronisation
-            sleep(30)
-            
-            // Vérifier le statut de l'application ArgoCD
-            verifyArgoCDDeployment(ENV_NAME)
-        }
 
     } catch (Exception e) {
         currentBuild.result = 'FAILURE'
@@ -87,9 +89,10 @@ node {
     }
 }
 
-// FONCTIONS UTILITAIRES EXISTANTES
+// FONCTIONS UTILITAIRES (identiques à l'original)
 def imageBuild(containerName, tag) {
-    sh "docker build -t $containerName:$tag -t $containerName --pull --no-cache ."
+    //sh "docker build -t back1 ."
+    sh "docker build -t $containerName:$tag  -t $containerName --pull --no-cache ."
     echo "Image build complete"
 }
 
@@ -100,103 +103,16 @@ def pushToImage(containerName, tag, dockerUser, dockerPassword) {
     echo "Image push complete"
 }
 
-// NOUVELLES FONCTIONS POUR GITOPS
-def updateGitOpsManifests(containerName, tag, envName, gitUser, gitPassword) {
-    // Cloner le repository GitOps
-    sh "git clone https://$gitUser:$gitPassword@github.com/votre-org/angular-app-gitops.git gitops-repo"
-    
-    dir('gitops-repo') {
-        // Configurer Git
-        sh "git config user.name 'Jenkins CI'"
-        sh "git config user.email 'jenkins@votre-domaine.com'"
-        
-        // Mettre à jour le manifeste Kubernetes selon l'environnement
-        def manifestPath = "environments/${envName}/deployment.yaml"
-        
-        // Utiliser sed pour mettre à jour l'image dans le manifeste
-        sh "sed -i 's|image: .*/.*:.*|image: ${dockerUser}/${containerName}:${tag}|g' ${manifestPath}"
-        
-        // Vérifier les changements
-        sh "git diff"
-        
-        // Commit et push
-        sh "git add ."
-        sh "git commit -m 'Update ${envName} image to ${tag} - Build #${env.BUILD_NUMBER}'"
-        sh "git push origin ${GITOPS_BRANCH}"
-        
-        echo "GitOps repository updated successfully"
-    }
-}
-
-def triggerArgoCDSync(envName) {
-    // Cette fonction nécessite que ArgoCD CLI soit installé sur Jenkins
-    def appName = "angular-app-${envName}"
-    def argoCDServer = "argocd.votre-domaine.com"
-    
-    withCredentials([usernamePassword(credentialsId: 'argocd-credentials', usernameVariable: 'ARGOCD_USERNAME', passwordVariable: 'ARGOCD_PASSWORD')]) {
-        try {
-            // Login ArgoCD
-            sh "argocd login ${argoCDServer} --username ${ARGOCD_USERNAME} --password ${ARGOCD_PASSWORD} --insecure"
-            
-            // Synchroniser l'application
-            sh "argocd app sync ${appName}"
-            
-            echo "ArgoCD synchronization triggered for ${appName}"
-        } catch (Exception e) {
-            echo "Warning: Could not trigger ArgoCD sync automatically: ${e.message}"
-            echo "ArgoCD will detect changes automatically within its polling interval"
-        }
-    }
-}
-
-def verifyArgoCDDeployment(envName) {
-    def appName = "angular-app-${envName}"
-    
-    withCredentials([usernamePassword(credentialsId: 'argocd-credentials', usernameVariable: 'ARGOCD_USERNAME', passwordVariable: 'ARGOCD_PASSWORD')]) {
-        try {
-            // Vérifier le statut de l'application
-            def appStatus = sh(script: "argocd app get ${appName} -o json | jq -r '.status.health.status'", returnStdout: true).trim()
-            
-            if (appStatus == "Healthy") {
-                echo "✅ Déploiement vérifié: Application ${appName} est en bonne santé"
-            } else {
-                echo "⚠️  Attention: Application ${appName} status: ${appStatus}"
-            }
-            
-            // Obtenir l'URL de l'application
-            def appUrl = getApplicationUrl(envName)
-            echo "🌐 Application accessible à: ${appUrl}"
-            
-        } catch (Exception e) {
-            echo "Warning: Could not verify deployment status: ${e.message}"
-        }
-    }
-}
-
-def getApplicationUrl(envName) {
-    if (envName == 'prod') {
-        return "https://angular-app.votre-domaine.com"
-    } else if (envName == 'uat') {
-        return "https://angular-app-uat.votre-domaine.com"
-    } else {
-        return "https://angular-app-dev.votre-domaine.com"
-    }
-}
-
 def sendEmail(recipients) {
-    def appUrl = getApplicationUrl(ENV_NAME)
     mail(
         to: recipients,
         subject: "Angular Build ${env.BUILD_NUMBER} - ${currentBuild.currentResult} - (${currentBuild.fullDisplayName})",
         body: "Check console output at: ${env.BUILD_URL}/console\n" +
               "Environment: ${ENV_NAME}\n" +
-              "Docker Image: ${CONTAINER_NAME}:${CONTAINER_TAG}\n" +
-              "Application URL: ${appUrl}\n" +
-              "ArgoCD App: angular-app-${ENV_NAME}\n"
+              "Port: ${HTTP_PORT}\n"
     )
 }
 
-// FONCTIONS UTILITAIRES EXISTANTES
 String getEnvName(String branchName) {
     if (branchName == 'main') {
         return 'prod'
